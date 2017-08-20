@@ -1,0 +1,88 @@
+﻿#pragma kernel CSMain
+
+#define threads_per_group_x 8
+#define threads_per_group_y 8
+#define threads_per_group_z 8
+
+// struct representing the data of a single particle
+struct particle
+{
+	float3 pos;
+	float3 col;
+};
+
+RWStructuredBuffer<particle> particleMapBuffer;	// 1 dimensional array of particles
+int numThreadGroupsX;	// total number of thread groups
+int numThreadGroupsY;	// total number of thread groups
+int numThreadGroupsZ;	// total number of thread groups
+float time;		// current time, for animation
+float spacing;	// spacing between particles
+
+[numthreads(threads_per_group_x, threads_per_group_y, threads_per_group_z)]
+void CSMain(uint3 dispatchID : SV_DispatchThreadID)
+{
+	// calculate total threads in the each dimension of whole box volume
+	int totalThreadsX = threads_per_group_x * numThreadGroupsX;
+	int totalThreadsY = threads_per_group_y * numThreadGroupsY;
+	int totalThreadsZ = threads_per_group_z * numThreadGroupsZ;
+
+	int totalThreads = totalThreadsX * totalThreadsY * totalThreadsZ;
+
+	// calculate the ID of this particle in the 1 dimensional array (flatten out 3D dispatch coordinates)
+	int bufferID = dispatchID.x + dispatchID.y * totalThreadsX + dispatchID.z * totalThreadsX * totalThreadsY;
+
+	// set particle's position
+	/*
+	particleMapBuffer[bufferID].pos = float3(
+		(float) (dispatchID.x * spacing) + (spacing * (sin(time*dispatchID.z)-cos(time*dispatchID.z)) * (float)dispatchID.y % 2.0),
+		(float) (dispatchID.y * spacing),// + (spacing * (cos(time*dispatchID.z)-sin(time*dispatchID.z)) * (float)dispatchID.x % 2.0),
+		(float)	(dispatchID.z * spacing)
+		);
+	*/
+
+	/*
+	particleMapBuffer[bufferID].pos = float3(
+		(float)(dispatchID.x * spacing) + (spacing * sin(time*dispatchID.z)) + ((float)dispatchID.y % sin(dispatchID.z)),
+		(float)(dispatchID.y * spacing) + (spacing * cos(time*dispatchID.z)) + ((float)dispatchID.x % sin(dispatchID.z)),
+		(float)(dispatchID.z * spacing)
+		);
+	*/
+
+	/*
+	particleMapBuffer[bufferID].pos = float3(
+		(float)(dispatchID.x * spacing) + (spacing * sin(time*dispatchID.z)) + ((float)dispatchID.y % 2),
+		(float)(dispatchID.y * spacing) + (spacing * cos(time*dispatchID.z)) + ((float)dispatchID.x % 4),
+		(float)(dispatchID.z * spacing)
+		);
+	*/
+
+	/*
+	particleMapBuffer[bufferID].pos = float3(
+		(float)(dispatchID.x * spacing) + (spacing * sin(time*dispatchID.z)) + ((float)dispatchID.y % 2),
+		(float)(dispatchID.y * spacing) + (spacing * cos(time*dispatchID.z)) + ((float)dispatchID.x % 4),
+		(float)(dispatchID.z * spacing) + spacing*sin(time*dispatchID.x) + spacing*sin(time*dispatchID.y)
+		);
+	*/
+	
+	particleMapBuffer[bufferID].pos = float3(
+		(float)(dispatchID.x * spacing) + (spacing * sin(time*dispatchID.z)) + ((float)dispatchID.y % 2),
+		(float)(dispatchID.y * spacing) + (spacing * cos(time*dispatchID.z)) + ((float)dispatchID.x % 4),
+		(float)(dispatchID.z * spacing) + spacing*sin(dispatchID.x) + spacing*sin(dispatchID.y)
+		);
+		
+	// set particle's colour
+
+	/*
+	particleMapBuffer[bufferID].col = float3(
+		1-(float) dispatchID.z/totalThreadsZ,
+		1-(float) dispatchID.z/totalThreadsZ,
+		1-(float) dispatchID.z/totalThreadsZ
+		);
+	*/
+
+	particleMapBuffer[bufferID].col = float3(
+		((float)dispatchID.z / totalThreadsZ - 0.75)*4,
+		1.50 - ((float)dispatchID.z / totalThreadsZ - 0.25)*4,
+		1.75 - (float)dispatchID.z / totalThreadsZ
+		);
+}
